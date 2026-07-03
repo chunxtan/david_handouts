@@ -1,4 +1,4 @@
-# Week 2: Introducing AI Tools
+# Week 3: Introducing AI Tools
 
 **Date:** 28 June 2026
 
