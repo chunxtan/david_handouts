@@ -366,7 +366,144 @@ def get_items():
 
 Run the app and visit `http://127.0.0.1:5001/items`. You should see your seeded items returned as JSON, straight from the database.
 
----
+
+## Resetting the database
+
+Once you have posted a few test items, your `lostfound.db` fills up with junk rows. During development, you often want an empty database which is called a reset.
+
+The bluntest reset deletes the database file and rebuilds it. Because everything in it right now is disposable seed data, this is completely safe. You would never do this to real user data, which is exactly what migrations (next section) are for.
+
+
+**The manual way (so you see what happens):**
+
+| Action | 🖥 Windows | 🍎 Mac / Linux |
+|--------|-----------|----------------|
+| ⚠️ Delete the database file | `del lostfound.db` | `rm lostfound.db` |
+| Rebuild the empty schema | `python init_db.py` | `python3 init_db.py` |
+| Reload the seed data | `python seed.py` | `python3 seed.py` |
+
+**The one command way.** Doing three steps by hand every time is tedious and easy to get wrong. Wrap it in a script. This needs one small change first: make `init_db.py` and `seed.py` expose a function instead of running everything at import time.
+
+Update `init_db.py` so the work lives in a function:
+
+```python
+import sqlite3
+
+DB_NAME = "lostfound.db"
+
+def init_db():
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL,
+        image_url TEXT,
+        status TEXT NOT NULL DEFAULT 'available'
+    );
+    """)
+    connection.commit()
+    connection.close()
+    print("Database initialised.")
+
+if __name__ == "__main__":
+    init_db()
+```
+
+Update `seed.py` the same way:
+
+```python
+from db import get_connection
+
+ITEMS = [
+    ("Blue Water Bottle", "Metal flask, small dent on the base.", "lost", "https://placehold.co/300x200"),
+    ("Black Umbrella", "Left near the Main Hall entrance.", "found", "https://placehold.co/300x200"),
+    ("Casio Calculator", "Scientific calculator, name inked on back.", "found", "https://placehold.co/300x200"),
+    ("Textbook: Physics AS", "Good condition, willing to trade.", "trade", "https://placehold.co/300x200"),
+    ("Set of Keys", "Three keys on a red lanyard.", "lost", "https://placehold.co/300x200"),
+    ("Wired Earphones", "Found in the library, second floor.", "found", "https://placehold.co/300x200"),
+]
+
+def seed():
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.executemany(
+        "INSERT INTO items (title, description, category, image_url) VALUES (?, ?, ?, ?)",
+        ITEMS,
+    )
+    connection.commit()
+    connection.close()
+    print(f"Inserted {len(ITEMS)} items.")
+
+if __name__ == "__main__":
+    seed()
+```
+
+The `if __name__ == "__main__":` line means the script still runs the same way when you call it directly, but the function can now be imported and reused.
+
+Now create `reset_db.py` in your project root:
+
+```python
+import os
+from init_db import init_db
+from seed import seed
+
+DB_NAME = "lostfound.db"
+
+if os.path.exists(DB_NAME):
+    os.remove(DB_NAME)
+    print(f"Removed old {DB_NAME}.")
+
+init_db()
+seed()
+print("Reset complete.")
+```
+
+One command, same result on either OS (Python does the file deletion for you, so no `del` or `rm`):
+
+| Action | 🖥 Windows | 🍎 Mac / Linux |
+|--------|-----------|----------------|
+| Wipe and rebuild the database | `python reset_db.py` | `python3 reset_db.py` |
+
+> ⚠️ A reset **destroys everything** in the database. That is fine now because the data is fake seed data you can regenerate. The moment real users exist, do NOT use reset. Use migrations.
+
+
+## Schema changes & migrations
+
+### When the schema needs to change
+
+Your database design is not finished. Over the coming weeks you will add a `users` table, link items to whoever posted them, add points, add an audit log. Each of those is a **change to the schema of a database that already holds data**.
+
+**The big idea.** Think of migrations as *git commits for your database structure*. Each one is a small, ordered, recorded change that moves the schema from one version to the next. Resetting is knocking the house down and rebuilding it; a migration is renovating a room while you still live there, without throwing out your furniture.
+
+**What a migration actually is.** An ordered, versioned instruction that alters the schema in place and keeps existing rows intact. Instead of rewriting `CREATE TABLE`, you issue a change such as:
+
+```sql
+ALTER TABLE items ADD COLUMN posted_by INTEGER;
+```
+
+Run once, this adds a `posted_by` column to every existing row (filled with `NULL`) without deleting a thing. `ALTER TABLE ... ADD COLUMN` is the migration primitive you will use most.
+
+**Two tools, two situations:**
+
+| Situation | Tool | Keeps data? |
+|-----------|------|-------------|
+| Early development, data is disposable seed data | `reset_db.py` | No |
+| The table holds data you cannot lose | `ALTER TABLE` migration | Yes |
+
+**File Management** Keep a `migrations/` folder of numbered SQL files that run in strict order, so any machine can replay the exact same schema history:
+
+```
+migrations/
+  001_create_items.sql
+  002_add_posted_by.sql
+  003_create_users.sql
+```
+
+Tools like Alembic or Flask-Migrate automate this for large apps. You do not need them here. For this course: **while the data is fake, reset freely; once it is real, migrate.**
+
 
 ## Exercise: fetch real data into your cards
 
@@ -382,12 +519,51 @@ Your landing page `script.js` still renders the old placeholder fields (`item.na
 >
 > Success looks like: refresh the page and see all six seeded items rendered as cards with their real title, description, category, and picture.
 
----
+
+## Routing rename checklist
+
+In the future part of the app, we want to have `GET /items/:id` to return item JSON. But this exercise wants `/items/<id>` to be a browsable page. The same path can't be both a JSON endpoint and an HTML shell. So let's do a few changes:
+
+- [ ] Week 3 form: `action="/items"` becomes `action="/api/items"`.
+- [ ] Week 4/5 landing fetch in `script.js`: `fetch("/items")` becomes `fetch("/api/items")`.
+- [ ] Existing GET list route: rename `@app.route('/items', ...)` to `@app.route('/api/items', ...)`.
+
+
 
 ## Homework
 
 - [ ] Finalise your database design sketch from the in-session exercise. List every entity, and for the `items` table note each column, its type, and whether it can be empty.
-- [ ] Make sure `init_db.py`, `db.py`, and `seed.py` all run cleanly and produce a populated `lostfound.db`.
+- [ ] Make sure `init_db.py`, `db.py`, and `seed.py` all run cleanly and produce a populated `lostfound.db`, according to your ER diagram.
 - [ ] Add a schema comment at the top of `db.py` explaining each column of the `items` table and why it exists. Tie each column back to a user story.
+- [ ] Make the Post Item form write a real row to your DB.
 - [ ] Complete the card rendering exercise so the landing page shows your seeded items (title, description, category, image) with no full-page reload.
+
+> Replace your `style.css` file with the following content:
+> ```
+> body {
+>    font-family: sans-serif;
+>    margin: 2rem;
+> }
+>
+> .item-card {
+>    border: 1px solid #ccc;
+>    border-radius: 6px;
+>    padding: 1rem;
+>    margin-bottom: 0.75rem;
+> }
+> ```
+
+- [ ] Click a card to open that item's page.
+> Each card on the landing page should link to `/items/<id>`, a page that shows just that one item.
+>
+> **Guided:** in `script.js`, wrap each card in a link so the whole card is clickable. Set its `href` to the item's id:
+> ```js
+> const card = document.createElement("a");
+> card.href = `/items/${item.id}`;
+> card.classList.add("item-card");
+> ```
+>
+> **Independent:** build the detail page.
+>
+> Success looks like: click any card, land on `/items/3`, see that item's full detail, and get a clean message if the id does not exist.
 - [ ] Commit and push everything with a clear message, for example `feat: add sqlite database, seed data, and db-backed items route`.
