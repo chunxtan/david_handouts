@@ -532,9 +532,9 @@ In the future part of the app, we want to have `GET /items/:id` to return item J
 
 ## Homework
 
-- [ ] Finalise your database design sketch from the in-session exercise. List every entity, and for the `items` table note each column, its type, and whether it can be empty.
+- [X] Finalise your database design sketch from the in-session exercise. List every entity, and for the `items` table note each column, its type, and whether it can be empty.
 - [ ] Make sure `init_db.py`, `db.py`, and `seed.py` all run cleanly and produce a populated `lostfound.db`, according to your ER diagram.
-- [ ] Add a schema comment at the top of `db.py` explaining each column of the `items` table and why it exists. Tie each column back to a user story.
+- [ ] Add a schema comment at the top of `init_db.py` explaining each column of each table and why it exists. Tie each column back to user stories where relevant.
 - [ ] Make the Post Item form write a real row to your DB.
 - [ ] Complete the card rendering exercise so the landing page shows your seeded items (title, description, category, image) with no full-page reload.
 
