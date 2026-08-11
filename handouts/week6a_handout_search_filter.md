@@ -221,6 +221,16 @@ Thunder Client is the REST client built into VS Code (the extension you used in 
 - [ ] Add the category dropdown and its `change` listener so search and category work at the same time. Test the combined case in Thunder Client.
 
 - [ ] Searching on every keystroke fires a request per letter. Add a short debounce so the fetch only runs once the user pauses typing (about 300ms). Hint: `setTimeout` and `clearTimeout` around the call inside `loadItems`. What problem does this solve, and what does it cost?
+```
+let debounceTimer;
+
+function debouncedLoad() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadItems, 300);
+}
+
+searchInput.addEventListener("input", debouncedLoad);
+```
 
 
 ## Homework
