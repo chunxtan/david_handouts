@@ -312,7 +312,7 @@ For reference, a correct `seed.py` looks like this:
 ```python
 from db import get_connection
 
-items = [
+ITEMS = [
     ("Blue Water Bottle", "Metal flask, small dent on the base.", "lost", "https://placehold.co/300x200"),
     ("Black Umbrella", "Left near the Main Hall entrance.", "found", "https://placehold.co/300x200"),
     ("Casio Calculator", "Scientific calculator, name inked on back.", "found", "https://placehold.co/300x200"),
@@ -321,17 +321,19 @@ items = [
     ("Wired Earphones", "Found in the library, second floor.", "found", "https://placehold.co/300x200"),
 ]
 
-connection = get_connection()
-cursor = connection.cursor()
+def seed():
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.executemany(
+        "INSERT INTO items (title, description, category, image_url) VALUES (?, ?, ?, ?)",
+        ITEMS,
+    )
+    connection.commit()
+    connection.close()
+    print(f"Inserted {len(ITEMS)} items.")
 
-cursor.executemany(
-    "INSERT INTO items (title, description, category, image_url) VALUES (?, ?, ?, ?)",
-    items,
-)
-
-connection.commit()
-connection.close()
-print(f"Inserted {len(items)} items.")
+if __name__ == "__main__":
+    seed()
 ```
 
 Run it once:
