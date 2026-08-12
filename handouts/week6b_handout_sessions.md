@@ -129,6 +129,23 @@ Because the data is still disposable seed data, rebuild from scratch:
 
 > ⚠️ When real users exist you do not reset. You add `posted_by` with the `ALTER TABLE` migration you previewed in Week 5. While the data is fake, reset freely.
 
+As a reminder, `reset_db.py` should look something like this:
+```
+import os
+from init_db import init_db
+from seed import seed
+
+DB_NAME = "lostfound.db"
+
+if os.path.exists(DB_NAME):
+    os.remove(DB_NAME)
+    print(f"Removed old {DB_NAME}.")
+
+init_db()
+seed()
+print("Reset complete.")
+```
+
 Seeded items have no owner, so their `posted_by` is `NULL`. That is fine, the browse page will show them as posted by an unknown user.
 
 **The secret key.** Flask needs a secret to sign the session cookie. Add this near the top of `app.py`:
@@ -527,4 +544,3 @@ card.appendChild(poster);
 | `@login_required` | Our decorator that blocks a route unless a `user_id` is in the session |
 | 401 | The HTTP status for "you are not authenticated" |
 | Foreign key | A column pointing at another table's row, here `items.posted_by` to `users.id` |
-
