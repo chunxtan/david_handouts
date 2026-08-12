@@ -173,33 +173,32 @@ from db import get_connection
 ```python
 @app.route('/api/register', methods=['POST'])
 def register():
-    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
 
-    if not username or not password:
-        return jsonify({"error": "Username and password are required."}), 400
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
 
     connection = get_connection()
     cursor = connection.cursor()
 
     existing = cursor.execute(
-        "SELECT id FROM users WHERE username = ?", (username,)
+        "SELECT id FROM users WHERE email = ?", (email,)
     ).fetchone()
     if existing:
         connection.close()
-        return jsonify({"error": "That username is already taken."}), 409
+        return jsonify({"error": "That email is already taken."}), 409
 
     cursor.execute(
-        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-        (username, generate_password_hash(password)),
+        "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+        (email, generate_password_hash(password, method="pbkdf2:sha256")),
     )
     connection.commit()
     user_id = cursor.lastrowid
     connection.close()
 
-    session["user_id"] = user_id
-    session["username"] = username
-    return jsonify({"status": "ok", "username": username})
+    session["email"] = email
+    return jsonify({"status": "ok", "email": email})
 ```
 
 **Login.** Look the user up, compare hashes, and give the same error whether the username is wrong or the password is wrong, so you never reveal which usernames exist.
@@ -207,23 +206,22 @@ def register():
 ```python
 @app.route('/api/login', methods=['POST'])
 def login():
-    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
 
     connection = get_connection()
     cursor = connection.cursor()
     user = cursor.execute(
-        "SELECT id, username, password_hash FROM users WHERE username = ?",
-        (username,),
+        "SELECT id, email, password_hash FROM users WHERE email = ?",
+        (email,),
     ).fetchone()
     connection.close()
 
     if user is None or not check_password_hash(user["password_hash"], password):
-        return jsonify({"error": "Invalid username or password."}), 401
+        return jsonify({"error": "Invalid email or password."}), 401
 
-    session["user_id"] = user["id"]
-    session["username"] = user["username"]
-    return jsonify({"status": "ok", "username": user["username"]})
+    session["email"] = user["email"]
+    return jsonify({"status": "ok", "email": user["email"]})
 ```
 
 **Logout and "who am I".** Logout clears the session. The `me` route lets the frontend ask whether anyone is logged in, which the nav bar uses.
@@ -237,7 +235,7 @@ def logout():
 @app.route('/api/me', methods=['GET'])
 def me():
     if "user_id" in session:
-        return jsonify({"logged_in": True, "username": session.get("username")})
+        return jsonify({"logged_in": True, "email": session.get("email")})
     return jsonify({"logged_in": False})
 ```
 
